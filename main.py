@@ -18,7 +18,7 @@ def get_content1(link):
     soup = BeautifulSoup(response, 'html.parser')
     content = soup.find('div', class_='v_news_content')
     if content:
-        return content.text.strip()
+        return content.text.strip()  # 去除字符串两端的空白字符（包括空格、制表符、换行符等
     else:
         return ""
 
