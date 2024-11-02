@@ -64,7 +64,7 @@ def main():
         txt = txt.replace(ch, "")
     words = jieba.cut(txt)  # 使用分词工具进行分词
     stopwords = []
-    with open(r"E:\openlab复试\stop_words_CHN.txt", 'r', encoding='utf-8') as f:
+    with open(r"E:\Open Lab复试（最终）\stop_words_CHN.txt", 'r', encoding='utf-8') as f:
         stopwords = f.read()
 
     counts = {}
