@@ -1,27 +1,40 @@
 import requests
 from bs4 import BeautifulSoup
 from openpyxl import Workbook
-import openpyxl
 from urllib.parse import urljoin
 import jieba
 from wordcloud import WordCloud
+import os
 
-data = []
-url = 'https://www.bkjx.sdu.edu.cn/index/gztz.htm'
+data1 = []
+data2 = []
+url1 = 'https://www.bkjx.sdu.edu.cn/index/gztz.htm'
+url2 = 'https://www.cs.sdu.edu.cn/bkjy.htm'
 
 
-def get_content(url):
-    response = requests.get(url).content.decode('utf-8', errors='ignore')
+# 获取通知内容
+def get_content1(link):
+    response = requests.get(link).content.decode('utf-8', errors='ignore')
     soup = BeautifulSoup(response, 'html.parser')
     content = soup.find('div', class_='v_news_content')
     if content:
-        return content.text.strip()  # 使用 .strip() 方法去除首尾的空白字符
-        # （如空格、制表符、换行符等）'''
+        return content.text.strip()
     else:
         return ""
 
 
-def get_title_link(url):
+def get_content2(link):
+    response = requests.get(link).content.decode('utf-8', errors='ignore')
+    soup = BeautifulSoup(response, 'html.parser')
+    content = soup.find('div', class_='v_news_content')
+    if content:
+        return content.text.strip()
+    else:
+        return ""
+
+
+# 获取标题，链接，时间
+def get_title_link1(url):
     html = requests.get(url).content.decode('utf-8')
     soup = BeautifulSoup(html, 'html.parser')
     chapters = soup.find('div', class_='newscontent')
@@ -29,65 +42,127 @@ def get_title_link(url):
         chapters = chapters.find_all('a')
         for each in chapters:
             time0 = each.parent.find_next_sibling()
-            if time0 != None:
-                time = each.parent.find_next_sibling().text
+            if time0:
+                time = time0.text
                 title = each.text
-                # print(each.parent.find_next_sibling())
-                link = urljoin('https://www.bkjx.sdu.edu.cn/index/gztz.htm', each.get('href'))
-                data.append([title, time, link])
-        return data
+                link = urljoin(url, each.get('href'))
+                data1.append([title, time, link])
+        return data1
     else:
         raise ValueError("未找到章节列表，请检查页面结构")
 
 
+def get_title_link2(url):
+    html = requests.get(url).content.decode('utf-8')
+    soup = BeautifulSoup(html, 'html.parser')
+    chapters = soup.find('div', class_='dqlb')
+    if chapters:
+        chapters = chapters.find_all('a')
+        for each in chapters:
+            time0 = each.parent.find_next_sibling()
+            if time0:
+                time = time0.text
+                title = each.text
+                link = urljoin(url, each.get('href'))
+                data2.append([title, time, link])
+        return data2
+    else:
+        raise ValueError("未找到章节列表，请检查页面结构")
+
+
+# 生成词云图
+def create_word_cloud(text, filename):
+    for ch in ':。，/？‘’【】{}、|;?, -\'''年''月''日':
+        text = text.replace(ch, "")
+    words = jieba.cut(text)
+    stopwords = set()
+    with open(r'E:\openlab复试\stop_words_CHN.txt', 'r', encoding='utf-8') as f:
+        stopwords.update(f.read().splitlines())
+
+    # 去除停用词
+    text = ' '.join([word for word in words if word not in stopwords])
+
+    # 生成词云
+    wc = WordCloud(font_path="/Fonts/simhei.ttf", background_color="white")
+    wc.generate(text)
+
+    # 保存词云图像
+    wc.to_file(filename)
+
+
 def main():
+    # 创建一个文件夹来存放所有通知的内容和词云图
+    base_output_dir1 = "本科生院通知文件"
+    os.makedirs(base_output_dir1, exist_ok=True)  # 创建主目录1
+    base_output_dir2 = "计科通知文件"
+    os.makedirs(base_output_dir2, exist_ok=True)  # 创建主目录2
+
     # 打开文件
-    wb = openpyxl.Workbook()  # 创建一个工作簿
-    ws = wb.active  # 新的工作簿默认有一个工作表
-    ws.title = "本科生院工作通知"  # 设置工作表的标题
-    ws.append(["标题", "时间", "链接"])  # 添加表头
-    ws.column_dimensions["A"].width = 120  # 设置列宽
-    ws.column_dimensions["B"].width = 20
-    ws.column_dimensions["C"].width = 80
-    titlelink = get_title_link(url)
-    with open("本科生院官网通知.txt", "w", encoding='utf-8') as f:  # 添加 encoding 参数
-        for title, time, link in data:
-            ws.append([title, time, link])
-            print(title)
-            f.write(title + '\n')
-            content = get_content(link)
-            f.write(content + '\n')
+    wb1 = Workbook()
+    ws1 = wb1.active
+    ws1.title = "本科生院工作通知"
+    ws1.append(["标题", "时间", "链接"])
+    ws1.column_dimensions["A"].width = 120
+    ws1.column_dimensions["B"].width = 20
+    ws1.column_dimensions["C"].width = 80
 
-    wb.save("本科生院官网通知.xlsx")
-    txt = open("本科生院官网通知.txt", 'r', encoding='utf-8').read()
-    for ch in ':。，  /？‘’【】{}、|;'', ?-' '':
-        txt = txt.replace(ch, "")
-    words = jieba.cut(txt)  # 使用分词工具进行分词
-    stopwords = []
-    with open(r"E:\Open Lab复试（最终）\stop_words_CHN.txt", 'r', encoding='utf-8') as f:
-        stopwords = f.read()
+    title_link_data1 = get_title_link1(url1)
 
-    counts = {}
-    for word in words:
-        if word not in stopwords:  # 去除停用词
-            counts[word] = counts.get(word, 0) + 1  # 使用字典统计词频
+    wb2 = Workbook()
+    ws2 = wb2.active
+    ws2.title = "计科工作通知"
+    ws2.append(["标题", "时间", "链接"])
+    ws2.column_dimensions["A"].width = 120
+    ws2.column_dimensions["B"].width = 20
+    ws2.column_dimensions["C"].width = 80
 
-    items = list(counts.items())  # 转成列表
-    items.sort(key=lambda x: x[1], reverse=True)
-    wordStr = ''
-    for i in range(50):  # 输出前五十的高频词
-        word, count = items[i]
-        wordStr += ' ' + word  # 使用空格分隔每一个词汇
-        print("{0:<10} {1:>5}".format(word, count))
-    w = WordCloud(font_path="/Fonts/simhei.ttf").fit_words(counts)  # 根据词频绘制词云
-    w.to_file('通知词云.png')  # 图片放置位置
+    title_link_data2 = get_title_link2(url2)
+
+    for title1, time1, link1 in title_link_data1:
+        ws1.append([title1, time1, link1])
+        print(title1)
+
+        # 获取每个通知内容
+        content1 = get_content1(link1)
+
+        # 创建对应的子文件夹
+        notification_dir1 = f"{base_output_dir1}/{title1}"
+        os.makedirs(notification_dir1, exist_ok=True)  # 创建子文件夹
+
+        # 将内容写入相应的的.txt 文件
+        filename_txt1 = f"{notification_dir1}/{title1}.txt"
+        with open(filename_txt1, "w", encoding='utf-8') as f1:
+            f1.write(content1)
+
+        # 生成对应的词云图
+        wordcloud_filename1 = f"{notification_dir1}/{title1}_wordcloud.png"
+        create_word_cloud(content1, wordcloud_filename1)
+
+    wb1.save("本科生院官网通知.xlsx")  # 将标题，时间，链接存在excel中
+
+    for title2, time2, link2 in title_link_data2:
+        ws2.append([title2, time2, link2])
+        print(title2)
+
+        # 获取每个通知内容
+        content2 = get_content2(link2)
+
+        # 创建对应的子文件夹
+        notification_dir2 = f"{base_output_dir2}/{title2}"
+        os.makedirs(notification_dir2, exist_ok=True)  # 创建子文件夹
+
+        # 将内容写入相应的的.txt 文件
+        filename_txt2 = f"{notification_dir2}/{title2}.txt"
+        with open(filename_txt2, "w", encoding='utf-8') as f2:
+            f2.write(content2)
+
+        # 生成对应的词云图
+        if content2:
+            wordcloud_filename2 = f"{notification_dir2}/{title2}_wordcloud.png"
+            create_word_cloud(content2, wordcloud_filename2)
+
+    wb2.save("计科官网通知.xlsx")  # 将标题，时间，链接存在excel中
 
 
-'''main() 函数只会在脚本直接运行时被调用。如果此脚本被其他脚本导入，
-main() 不会被自动执行。这样做的好处是可以方便地复用函数，
-同时保证脚本作为独立程序运行时的行为符合预期。'''
 if __name__ == "__main__":
     main()
-
-
-
