@@ -1,6 +1,5 @@
 import requests
 from bs4 import BeautifulSoup
-import xlwt
 from openpyxl import Workbook
 import openpyxl
 from urllib.parse import urljoin
