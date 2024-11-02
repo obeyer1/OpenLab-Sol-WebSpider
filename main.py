@@ -76,7 +76,7 @@ def create_word_cloud(text, filename):
         text = text.replace(ch, "")
     words = jieba.cut(text)
     stopwords = set()
-    with open(r"E:\Open Lab复试（最终）\stop_words_CHN.txt", 'r', encoding='utf-8') as f:
+    with open('stop_words_CHN.txt', 'r', encoding='utf-8') as f:
         stopwords.update(f.read().splitlines())
 
     # 去除停用词
